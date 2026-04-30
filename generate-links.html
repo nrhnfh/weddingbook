@@ -5,30 +5,186 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generate Link Undangan</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS library untuk export Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 </head>
-<body class="bg-gray-100 p-8">
-    <div class="container mx-auto max-w-4xl">
+<body class="bg-gray-100 p-4 md:p-8">
+    <div class="container mx-auto max-w-5xl">
         <div class="bg-white rounded-2xl shadow-xl p-6">
             <h1 class="text-2xl font-bold text-rose-600 mb-4">🔗 Generate Link Undangan Digital</h1>
-            <div class="alert alert-info bg-blue-50 p-4 rounded-xl mb-6 text-sm">1. Copy data dari Google Sheets (Ctrl+A → Ctrl+C)<br>2. Paste di bawah<br>3. Klik Generate</div>
-            <textarea id="dataInput" rows="8" class="w-full border rounded-lg p-3 font-mono text-sm" placeholder="Paste data dari Google Sheets di sini..."></textarea>
-            <div class="flex gap-3 mt-4"><button onclick="generateLinks()" class="bg-rose-600 text-white px-6 py-2 rounded-lg">🔗 Generate Link</button><button onclick="exportToExcel()" class="bg-green-600 text-white px-6 py-2 rounded-lg">📥 Export Excel</button></div>
-            <div class="mt-4"><label class="font-semibold">Base URL:</label><input type="text" id="baseUrl" class="w-full border rounded-lg p-2 mt-1" placeholder="https://namaproject.netlify.app/undangan.html" value="https://namaproject.netlify.app/undangan.html"></div>
-            <div id="resultContainer" class="mt-6 hidden"><h2 class="font-semibold mb-3">Hasil Generate:</h2><div class="overflow-x-auto max-h-96"><table class="table table-sm w-full border"><thead class="bg-gray-100"><tr><th>ID</th><th>Nama</th><th>Link Undangan</th></tr></thead><tbody id="resultTable"></tbody></table></div><div class="mt-4 p-3 bg-green-50 rounded-lg"><span id="totalCount">0</span> link undangan</div></div>
+            
+            <div class="alert alert-info bg-blue-50 p-4 rounded-xl mb-6 text-sm border border-blue-200">
+                <p>📌 <strong>Cara menggunakan:</strong></p>
+                <ol class="list-decimal ml-5 mt-2 space-y-1">
+                    <li>Buka Google Sheets → sheet <strong>daftar_tamu</strong></li>
+                    <li>Blok semua data (Ctrl+A) → Copy (Ctrl+C)</li>
+                    <li>Paste ke text area di bawah (Ctrl+V)</li>
+                    <li>Klik <strong>Generate Link</strong></li>
+                    <li>Klik <strong>Export Excel</strong> untuk download</li>
+                </ol>
+            </div>
+
+            <textarea id="dataInput" rows="8" class="w-full border rounded-lg p-3 font-mono text-sm" placeholder="Paste data dari Google Sheets di sini...&#10;&#10;Contoh:&#10;id	nama_lengkap	nomor_hp	kategori	nomor_meja	qr_code&#10;T001	Budi Santoso	081234567890	Keluarga	Meja 1	PERNIKAHAN|T001|...&#10;T002	Siti Aminah	081298765432	Sahabat	Meja 2	PERNIKAHAN|T002|..."></textarea>
+            
+            <div class="flex flex-wrap gap-3 mt-4">
+                <button onclick="generateLinks()" class="bg-rose-600 hover:bg-rose-700 text-white px-6 py-2 rounded-lg transition">🔗 Generate Link</button>
+                <button onclick="exportToExcel()" id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition" disabled>📥 Export Excel</button>
+            </div>
+
+            <div class="mt-4">
+                <label class="font-semibold text-gray-700">🌐 Base URL Undangan:</label>
+                <input type="text" id="baseUrl" class="w-full border rounded-lg p-2 mt-1 text-sm" placeholder="https://namaproject.netlify.app/undangan.html" value="https://buku-tamu-nikah.netlify.app/undangan.html">
+                <p class="text-xs text-gray-400 mt-1">Contoh: https://buku-tamu-nikah.netlify.app/undangan.html</p>
+            </div>
+
+            <div id="resultContainer" class="mt-6 hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-semibold text-gray-700">📋 Hasil Generate Link:</h2>
+                    <span class="text-sm bg-green-100 text-green-700 px-3 py-1 rounded-full" id="totalCount">0</span>
+                </div>
+                <div class="overflow-x-auto max-h-96 border rounded-lg">
+                    <table class="table table-sm w-full text-sm">
+                        <thead class="bg-gray-100 sticky top-0">
+                            <tr>
+                                <th class="p-2 text-left">ID</th>
+                                <th class="p-2 text-left">Nama Tamu</th>
+                                <th class="p-2 text-left">Link Undangan</th>
+                                <th class="p-2 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultTable"></tbody>
+                    </table>
+                </div>
+                <div class="mt-4 p-3 bg-green-50 rounded-lg text-sm">
+                    <p>✅ <span id="totalCount2">0</span> link undangan siap dibagikan</p>
+                    <p class="text-xs text-gray-500 mt-1">💡 Klik tombol Export Excel untuk mendownload semua link</p>
+                </div>
+            </div>
         </div>
     </div>
+
     <script>
         let linkData = [];
+
         function generateLinks() {
-            const raw = document.getElementById('dataInput').value, base = document.getElementById('baseUrl').value.trim() || window.location.origin+'/undangan.html';
-            if(!raw) return alert('Paste data dulu!');
-            linkData = raw.trim().split('\n').slice(1).map(line=>{ const cols=line.split('\t'); return { id:cols[0], nama:cols[1], link:`${base}?id=${cols[0]}` }; }).filter(d=>d.id);
-            document.getElementById('resultTable').innerHTML = linkData.map(d=>`<tr><td class="text-xs">${d.id}</td><td>${d.nama}</td><td class="text-xs text-blue-600 break-all">${d.link}</td></tr>`).join('');
+            const rawData = document.getElementById('dataInput').value;
+            let baseUrl = document.getElementById('baseUrl').value.trim();
+            
+            if (!baseUrl) {
+                baseUrl = window.location.origin + '/undangan.html';
+            }
+            
+            if (!rawData || rawData.trim() === '') {
+                alert('❌ Silakan paste data dari Google Sheets terlebih dahulu!');
+                return;
+            }
+
+            const lines = rawData.trim().split('\n');
+            if (lines.length < 2) {
+                alert('❌ Data minimal harus memiliki header + 1 baris data!');
+                return;
+            }
+
+            linkData = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const columns = line.split('\t');
+                if (columns.length >= 2) {
+                    const id = columns[0];
+                    const nama = columns[1];
+                    if (id && nama && id !== 'id') {
+                        const link = `${baseUrl}?id=${id}`;
+                        linkData.push({ id, nama, link });
+                    }
+                }
+            }
+
+            if (linkData.length === 0) {
+                alert('❌ Tidak ada data valid. Pastikan format: id (kolom A) dan nama_lengkap (kolom B)');
+                return;
+            }
+
+            // Tampilkan hasil
+            const tbody = document.getElementById('resultTable');
+            tbody.innerHTML = linkData.map((data, idx) => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-2 font-mono text-xs">${data.id}</td>
+                    <td class="p-2">${data.nama}</td>
+                    <td class="p-2 text-blue-600 text-xs break-all">${data.link}</td>
+                    <td class="p-2 text-center">
+                        <button onclick="copyLink('${data.link}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs">📋 Copy</button>
+                    </td>
+                </tr>
+            `).join('');
+
             document.getElementById('totalCount').innerHTML = linkData.length;
+            document.getElementById('totalCount2').innerHTML = linkData.length;
             document.getElementById('resultContainer').classList.remove('hidden');
+            
+            // Aktifkan tombol export
+            document.getElementById('exportBtn').disabled = false;
+            
+            alert(`✅ Berhasil! ${linkData.length} link undangan siap di-export`);
         }
-        function exportToExcel() { if(!linkData.length) return alert('Generate dulu!'); XLSX.writeFile(XLSX.utils.book_new(), `link_undangan_${Date.now()}.xlsx`); }
+
+        function copyLink(link) {
+            navigator.clipboard.writeText(link).then(() => {
+                alert('✅ Link berhasil disalin!');
+            }).catch(() => {
+                alert('❌ Gagal menyalin link');
+            });
+        }
+
+        function exportToExcel() {
+            if (linkData.length === 0) {
+                alert('❌ Generate link terlebih dahulu!');
+                return;
+            }
+
+            try {
+                // Siapkan data untuk Excel
+                const wsData = linkData.map(d => ({
+                    'ID': d.id,
+                    'Nama Tamu': d.nama,
+                    'Link Undangan': d.link
+                }));
+
+                // Buat worksheet
+                const ws = XLSX.utils.json_to_sheet(wsData);
+                
+                // Atur lebar kolom
+                ws['!cols'] = [{wch:10}, {wch:25}, {wch:60}];
+                
+                // Buat workbook
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Link Undangan');
+                
+                // Download file
+                const now = new Date();
+                const filename = `link_undangan_${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}_${now.getHours()}-${now.getMinutes()}.xlsx`;
+                XLSX.writeFile(wb, filename);
+                
+                alert(`✅ Export berhasil! ${linkData.length} link disimpan ke Excel`);
+            } catch(error) {
+                console.error('Export error:', error);
+                alert('❌ Gagal export: ' + error.message);
+            }
+        }
+
+        // Cek apakah SheetJS sudah siap
+        function checkSheetJS() {
+            if (typeof XLSX === 'undefined') {
+                console.log('Menunggu SheetJS load...');
+                setTimeout(checkSheetJS, 500);
+            } else {
+                console.log('✅ SheetJS siap digunakan');
+            }
+        }
+        
+        checkSheetJS();
     </script>
 </body>
 </html>
