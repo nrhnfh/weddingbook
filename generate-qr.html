@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate QR Code Massal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="container mx-auto max-w-4xl">
+        <div class="bg-white rounded-2xl shadow-xl p-6">
+            <h1 class="text-2xl font-bold text-rose-600 mb-4">📱 Generate QR Code Massal</h1>
+            <div class="alert alert-info bg-blue-50 p-4 rounded-xl mb-6 text-sm">1. Copy data dari Google Sheets (Ctrl+A → Ctrl+C)<br>2. Paste di bawah<br>3. Klik Generate → Download ZIP</div>
+            <textarea id="dataInput" rows="8" class="w-full border rounded-lg p-3 font-mono text-sm" placeholder="Paste data dari Google Sheets di sini..."></textarea>
+            <div class="flex gap-3 mt-4"><button onclick="processData()" class="bg-rose-600 text-white px-6 py-2 rounded-lg">🔍 Proses & Generate</button><button onclick="downloadZip()" id="downloadBtn" class="bg-green-600 text-white px-6 py-2 rounded-lg" disabled>📦 Download ZIP</button></div>
+        </div>
+    </div>
+    <script>
+        let qrImages = [];
+        function processData() {
+            const raw = document.getElementById('dataInput').value;
+            if(!raw) return alert('Paste data dulu!');
+            const lines = raw.trim().split('\n');
+            qrImages = [];
+            for(let i=1;i<lines.length;i++){ const cols=lines[i].split('\t'); if(cols.length>=6){ qrImages.push({ id:cols[0], nama:cols[1], qr:cols[5] }); } }
+            if(!qrImages.length) return alert('Data tidak valid!');
+            document.getElementById('downloadBtn').disabled = false;
+            alert(`✅ ${qrImages.length} QR Code siap di-download`);
+        }
+        async function downloadZip() {
+            const zip = new JSZip();
+            for(let img of qrImages) {
+                const div = document.createElement('div'), p = new Promise(res=>{ new QRCode(div,{text:img.qr,width:300,height:300}); setTimeout(()=>{ const canvas=div.querySelector('canvas'); if(canvas) zip.file(`QR_${img.id}_${img.nama.replace(/\s/g,'')}.png`, canvas.toDataURL().split(',')[1], {base64:true}); res(); },200); });
+                await p;
+            }
+            const content = await zip.generateAsync({type:'blob'});
+            saveAs(content, `QR_Codes_${Date.now()}.zip`);
+            alert('Download selesai!');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Undangan Pernikahan Digital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Poppins:wght@300;400;500;600&display=swap');
+        .font-cursive { font-family: 'Great Vibes', cursive; }
+        .font-poppins { font-family: 'Poppins', sans-serif; }
+        .hero-pattern { background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%); }
+    </style>
+</head>
+<body class="font-poppins hero-pattern min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
+        <div id="loadingState" class="text-center py-20"><div class="loading loading-spinner loading-lg text-rose-500"></div><p class="mt-4">Memuat undangan...</p></div>
+        <div id="contentState" class="hidden">
+            <div class="text-center mb-8">
+                <div class="w-24 h-0.5 bg-rose-300 mx-auto mb-4"></div>
+                <h1 class="text-5xl font-cursive text-rose-700">Pernikahan</h1>
+                <p class="text-2xl font-cursive text-rose-600 mt-2">Budi & Siti</p>
+                <div class="w-24 h-0.5 bg-rose-300 mx-auto mt-4"></div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 text-center">
+                <p class="text-gray-500 text-sm">Kepada Yth.</p>
+                <h2 class="text-2xl font-bold text-rose-700 mt-1" id="namaTamu">-</h2>
+            </div>
+            <div class="bg-gradient-to-r from-rose-50 to-pink-50 rounded-2xl shadow-xl p-6 mb-6 border-2 border-rose-200 text-center">
+                <h3 class="font-semibold text-rose-700 mb-3">🎫 QR Code Check-in</h3>
+                <div id="qrCodeContainer" class="flex justify-center bg-white p-4 rounded-2xl inline-block mx-auto"></div>
+                <p class="text-xs text-gray-500 mt-3">Tunjukkan QR ini saat datang ke acara</p>
+            </div>
+            <div class="text-center mb-6">
+                <button onclick="saveQR()" class="bg-rose-500 text-white px-6 py-2 rounded-full">📲 Simpan QR Code</button>
+            </div>
+        </div>
+        <div id="errorState" class="hidden text-center py-20"><div class="text-6xl mb-4">😢</div><h2 class="text-xl font-semibold">Undangan Tidak Ditemukan</h2><button onclick="location.href='/'">Kembali</button></div>
+    </div>
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyWfeH6O8u9axauc3Vifs16GBXS_FNSCF6EwSO7dF0ZfT_LPn1b8XuYzZDVCdqgOXmqvw/exec';
+        let currentTamu = null, currentQR = '';
+
+        async function loadUndangan() {
+            const id = new URLSearchParams(location.search).get('id');
+            if(!id) return showError();
+            try {
+                const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get_semua_tamu' }) });
+                const result = await res.json();
+                if(result.success) {
+                    currentTamu = result.data.tamu.find(t => t.id === id);
+                    if(currentTamu) {
+                        currentQR = currentTamu.qr_code || `PERNIKAHAN|${id}|${currentTamu.nama_lengkap.replace(/\s/g, '')}|${Date.now()}`;
+                        document.getElementById('loadingState').classList.add('hidden');
+                        document.getElementById('contentState').classList.remove('hidden');
+                        document.getElementById('namaTamu').innerHTML = currentTamu.nama_lengkap;
+                        new QRCode(document.getElementById('qrCodeContainer'), { text: currentQR, width: 180, height: 180, colorDark: "#be123c" });
+                    } else showError();
+                } else showError();
+            } catch(e) { showError(); }
+        }
+
+        function saveQR() {
+            const canvas = document.querySelector('#qrCodeContainer canvas');
+            if(canvas) { const link = document.createElement('a'); link.download = `QR_${currentTamu?.id}.png`; link.href = canvas.toDataURL(); link.click(); alert('QR Code tersimpan!'); }
+        }
+
+        function showError() { document.getElementById('loadingState').classList.add('hidden'); document.getElementById('errorState').classList.remove('hidden'); }
+        window.addEventListener('DOMContentLoaded', loadUndangan);
+    </script>
+</body>
+</html>
