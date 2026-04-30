@@ -15,7 +15,13 @@
 </head>
 <body class="font-poppins hero-pattern min-h-screen">
     <div class="container mx-auto px-4 py-8 max-w-2xl">
-        <div id="loadingState" class="text-center py-20"><div class="loading loading-spinner loading-lg text-rose-500"></div><p class="mt-4">Memuat undangan...</p></div>
+        <!-- Loading State -->
+        <div id="loadingState" class="text-center py-20">
+            <div class="inline-block w-12 h-12 border-4 border-rose-200 border-t-rose-500 rounded-full animate-spin"></div>
+            <p class="mt-4 text-gray-500">Memuat undangan...</p>
+        </div>
+
+        <!-- Content State -->
         <div id="contentState" class="hidden">
             <div class="text-center mb-8">
                 <div class="w-24 h-0.5 bg-rose-300 mx-auto mb-4"></div>
@@ -23,51 +29,190 @@
                 <p class="text-2xl font-cursive text-rose-600 mt-2">Budi & Siti</p>
                 <div class="w-24 h-0.5 bg-rose-300 mx-auto mt-4"></div>
             </div>
+
             <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 text-center">
                 <p class="text-gray-500 text-sm">Kepada Yth.</p>
                 <h2 class="text-2xl font-bold text-rose-700 mt-1" id="namaTamu">-</h2>
+                <p class="text-gray-500 text-sm mt-2">di tempat</p>
             </div>
+
+            <div class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                <div class="text-center mb-4">
+                    <span class="bg-rose-100 text-rose-600 px-4 py-1 rounded-full text-sm">📅 Save the Date</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                        <div class="text-3xl mb-2">📆</div>
+                        <div class="font-semibold">Akad Nikah</div>
+                        <div class="text-sm text-gray-500">20 Mei 2026</div>
+                        <div class="text-xs text-gray-400">08:00 - 10:00</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl mb-2">🎉</div>
+                        <div class="font-semibold">Resepsi</div>
+                        <div class="text-sm text-gray-500">20 Mei 2026</div>
+                        <div class="text-xs text-gray-400">11:00 - 16:00</div>
+                    </div>
+                </div>
+                <div class="mt-4 text-center">
+                    <div class="text-3xl mb-2">📍</div>
+                    <div class="font-semibold">Gedung Serbaguna</div>
+                    <div class="text-sm text-gray-500">Jl. Raya No. 123, Jakarta</div>
+                </div>
+            </div>
+
             <div class="bg-gradient-to-r from-rose-50 to-pink-50 rounded-2xl shadow-xl p-6 mb-6 border-2 border-rose-200 text-center">
                 <h3 class="font-semibold text-rose-700 mb-3">🎫 QR Code Check-in</h3>
                 <div id="qrCodeContainer" class="flex justify-center bg-white p-4 rounded-2xl inline-block mx-auto"></div>
                 <p class="text-xs text-gray-500 mt-3">Tunjukkan QR ini saat datang ke acara</p>
+                <button onclick="saveQR()" class="mt-3 bg-rose-500 text-white px-6 py-2 rounded-full text-sm hover:bg-rose-600 transition">📲 Simpan QR Code</button>
             </div>
-            <div class="text-center mb-6">
-                <button onclick="saveQR()" class="bg-rose-500 text-white px-6 py-2 rounded-full">📲 Simpan QR Code</button>
+
+            <div class="text-center text-gray-500 text-xs pb-8">
+                <p>Merupakan suatu kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i</p>
+                <p>berkenan hadir untuk memberikan doa restu.</p>
+                <p class="mt-4">💕</p>
             </div>
         </div>
-        <div id="errorState" class="hidden text-center py-20"><div class="text-6xl mb-4">😢</div><h2 class="text-xl font-semibold">Undangan Tidak Ditemukan</h2><button onclick="location.href='/'">Kembali</button></div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden text-center py-20">
+            <div class="text-6xl mb-4">😢</div>
+            <h2 class="text-xl font-semibold text-gray-700">Undangan Tidak Ditemukan</h2>
+            <p class="text-gray-500 mt-2">Silakan hubungi panitia pernikahan</p>
+            <button onclick="goBack()" class="mt-4 bg-rose-500 text-white px-6 py-2 rounded-full">Kembali</button>
+        </div>
     </div>
+
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbyWfeH6O8u9axauc3Vifs16GBXS_FNSCF6EwSO7dF0ZfT_LPn1b8XuYzZDVCdqgOXmqvw/exec';
-        let currentTamu = null, currentQR = '';
+        // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        // >>> GANTI URL INI DENGAN HASIL DEPLOY APPS SCRIPT ANDA        <<<
+        // >>> https://script.google.com/macros/s/.../exec                 <<<
+        // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        const API_URL = 'https://script.google.com/macros/s/YOUR_DEPLOY_ID/exec';
+        
+        let currentTamu = null;
+        let currentQR = '';
+
+        // Ambil parameter dari URL
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
 
         async function loadUndangan() {
-            const id = new URLSearchParams(location.search).get('id');
-            if(!id) return showError();
+            console.log('🔍 Memuat undangan...');
+            
+            const tamuId = getQueryParam('id');
+            console.log('📌 ID dari URL:', tamuId);
+            
+            if (!tamuId) {
+                console.log('❌ Parameter id tidak ditemukan di URL');
+                showError();
+                return;
+            }
+
             try {
-                const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get_semua_tamu' }) });
-                const result = await res.json();
-                if(result.success) {
-                    currentTamu = result.data.tamu.find(t => t.id === id);
-                    if(currentTamu) {
-                        currentQR = currentTamu.qr_code || `PERNIKAHAN|${id}|${currentTamu.nama_lengkap.replace(/\s/g, '')}|${Date.now()}`;
-                        document.getElementById('loadingState').classList.add('hidden');
-                        document.getElementById('contentState').classList.remove('hidden');
-                        document.getElementById('namaTamu').innerHTML = currentTamu.nama_lengkap;
-                        new QRCode(document.getElementById('qrCodeContainer'), { text: currentQR, width: 180, height: 180, colorDark: "#be123c" });
-                    } else showError();
-                } else showError();
-            } catch(e) { showError(); }
+                console.log('📡 Memanggil API:', API_URL);
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_semua_tamu' })
+                });
+                
+                const result = await response.json();
+                console.log('📦 Response API:', result);
+                
+                if (result.success && result.data.tamu) {
+                    console.log('📋 Jumlah tamu di database:', result.data.tamu.length);
+                    
+                    // Cari tamu berdasarkan ID
+                    currentTamu = result.data.tamu.find(t => t.id === tamuId);
+                    console.log('🎯 Tamu yang dicari:', tamuId);
+                    console.log('✅ Tamu ditemukan:', currentTamu);
+                    
+                    if (currentTamu) {
+                        // Gunakan QR code yang ada atau buat sementara
+                        currentQR = currentTamu.qr_code;
+                        if (!currentQR) {
+                            // Generate QR sementara jika kosong
+                            currentQR = `PERNIKAHAN|${currentTamu.id}|${currentTamu.nama_lengkap.replace(/\s/g, '')}|${Date.now()}`;
+                            console.log('⚠️ QR Code kosong, generate sementara:', currentQR);
+                        }
+                        renderUndangan();
+                    } else {
+                        console.log('❌ ID tidak ditemukan di database');
+                        showError();
+                    }
+                } else {
+                    console.log('❌ Response API tidak berhasil:', result);
+                    showError();
+                }
+            } catch (error) {
+                console.error('❌ Error:', error);
+                showError();
+            }
+        }
+
+        function renderUndangan() {
+            console.log('🎨 Render undangan untuk:', currentTamu.nama_lengkap);
+            
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('contentState').classList.remove('hidden');
+            
+            // Set nama tamu
+            document.getElementById('namaTamu').innerHTML = currentTamu.nama_lengkap;
+            
+            // Generate QR Code
+            const qrContainer = document.getElementById('qrCodeContainer');
+            qrContainer.innerHTML = '';
+            
+            try {
+                new QRCode(qrContainer, {
+                    text: currentQR,
+                    width: 180,
+                    height: 180,
+                    colorDark: "#be123c",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                console.log('✅ QR Code berhasil digenerate');
+            } catch(e) {
+                console.error('❌ Gagal generate QR:', e);
+                qrContainer.innerHTML = '<div class="text-red-500">Gagal generate QR Code</div>';
+            }
         }
 
         function saveQR() {
             const canvas = document.querySelector('#qrCodeContainer canvas');
-            if(canvas) { const link = document.createElement('a'); link.download = `QR_${currentTamu?.id}.png`; link.href = canvas.toDataURL(); link.click(); alert('QR Code tersimpan!'); }
+            if (canvas) {
+                const link = document.createElement('a');
+                link.download = `QR_${currentTamu?.id}_${currentTamu?.nama_lengkap?.replace(/\s/g, '')}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                alert('✅ QR Code berhasil disimpan ke galeri!');
+            } else {
+                alert('❌ Gagal menyimpan QR Code');
+            }
         }
 
-        function showError() { document.getElementById('loadingState').classList.add('hidden'); document.getElementById('errorState').classList.remove('hidden'); }
-        window.addEventListener('DOMContentLoaded', loadUndangan);
+        function showError() {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('errorState').classList.remove('hidden');
+        }
+
+        function goBack() {
+            window.location.href = '/';
+        }
+
+        // Jalankan saat halaman siap
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Halaman undangan loaded');
+            console.log('📍 URL saat ini:', window.location.href);
+            console.log('🔗 API_URL:', API_URL);
+            loadUndangan();
+        });
     </script>
 </body>
 </html>
